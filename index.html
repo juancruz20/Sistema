@@ -404,6 +404,62 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   align-items: center;
 }
 
+/* Mattress viewer */
+.mattress-wrap {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--bg);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s;
+  position: relative;
+}
+.mattress-wrap:active { background: #F0F2F5; }
+.mattress-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: 8px;
+  letter-spacing: 0.3px;
+}
+.mattress-stack {
+  display: flex;
+  flex-direction: column;
+  transition: gap 0.4s ease;
+  gap: 2px;
+}
+.mattress-stack.exploded { gap: 10px; }
+.mattress-layer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  min-height: 32px;
+  transition: margin 0.4s ease, box-shadow 0.4s ease;
+}
+.mattress-stack.exploded .mattress-layer {
+  margin: 0 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+.mattress-layer .ml-name { font-size: 12px; }
+.mattress-layer .ml-measure { font-size: 11px; opacity: 0.85; }
+.mattress-tap {
+  text-align: center;
+  margin-top: 6px;
+  font-size: 16px;
+  color: var(--text-muted);
+}
+.mattress-tap span { display: inline-block; transition: transform 0.3s ease; }
+.mattress-wrap.exploded .mattress-tap span { transform: rotate(180deg); }
+
 /* Scroll utilities */
 .flex-1 { flex: 1; }
 .text-center { text-align: center; }
@@ -485,6 +541,39 @@ function formatMedida(val) {
   if (isNaN(num)) return val;
   if (Number.isInteger(num)) return `${num}cm`;
   return `${String(num).replace('.', ',')} cm`;
+}
+
+const MATTRESS_COLORS = ['#1E4A76','#38A169','#DD6B20','#E53E3E','#805AD5','#00BCD4','#E91E63','#F59E0B','#6366F1','#14B8A6'];
+function getPlateColor(tipo) {
+  if (PLATE_BORDER_COLORS[tipo]) return PLATE_BORDER_COLORS[tipo];
+  let hash = 0;
+  for (let i = 0; i < tipo.length; i++) hash = tipo.charCodeAt(i) + ((hash << 5) - hash);
+  return MATTRESS_COLORS[Math.abs(hash) % MATTRESS_COLORS.length];
+}
+
+function parsePlateHeight(medida) {
+  if (!medida) return 0;
+  if (medida.includes('x')) {
+    const parts = medida.split('x');
+    return parseFloat(parts[parts.length - 1]) || 0;
+  }
+  return parseFloat(medida) || 0;
+}
+
+function renderMattressViewer(plates, idx) {
+  if (!plates || plates.length === 0) return '';
+  const layers = plates.map(p => {
+    const height = parsePlateHeight(p.medida);
+    return `<div class="mattress-layer" style="background:${getPlateColor(p.tipo)}">
+      <span class="ml-name">${p.tipo}</span>
+      <span class="ml-measure">${height > 0 ? formatMedida(height) : ''}</span>
+    </div>`;
+  }).join('');
+  return `<div class="mattress-wrap" data-recipe-idx="${idx}">
+    <div class="mattress-label">🛏️ Vista del colchón — tocar para separar</div>
+    <div class="mattress-stack" data-ms="${idx}">${layers}</div>
+    <div class="mattress-tap"><span>👆</span></div>
+  </div>`;
 }
 
 // ===== APP STATE =====
@@ -1231,6 +1320,7 @@ const App = {
               <input type="text" class="form-control" style="flex:1;min-height:40px;padding:8px;font-size:13px" placeholder="Nuevo nombre..." data-rename-input="${idx}" value="${r.name}">
               <button class="btn btn-sm btn-success" style="width:auto;min-height:40px" data-action="rename-recipe" data-r="${idx}">Renombrar</button>
             </div>
+            ${renderMattressViewer(r.plates, idx)}
           </div>`;
         }).join('');
 
@@ -1762,6 +1852,17 @@ const App = {
       this.persist();
       this.show('settings');
       this.toast('Armado guardado');
+    });
+
+    // Mattress viewer toggle
+    document.querySelectorAll('.mattress-wrap').forEach(el => {
+      el.addEventListener('click', () => {
+        const idx = el.dataset.recipeIdx;
+        const stack = document.querySelector(`[data-ms="${idx}"]`);
+        if (!stack) return;
+        stack.classList.toggle('exploded');
+        el.classList.toggle('exploded');
+      });
     });
 
   }
