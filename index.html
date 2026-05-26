@@ -382,6 +382,28 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   flex: none !important;
 }
 
+/* Plate type expandable */
+.pt-card { cursor: pointer; transition: background 0.1s; }
+.pt-card:active { background: #E8EDF2; }
+.pt-card-header { display: flex; align-items: center; gap: 8px; }
+.pt-card-header .si-name { flex: 1; font-weight: 500; font-size: 14px; }
+.pt-expanded { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); }
+.pt-measure-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 13px;
+}
+.pt-measure-row span { flex: 1; color: var(--text-muted); }
+.pt-measure-row .btn-icon { font-size: 14px; color: var(--danger); min-width: 32px; min-height: 32px; }
+.pt-add-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  align-items: center;
+}
+
 /* Scroll utilities */
 .flex-1 { flex: 1; }
 .text-center { text-align: center; }
@@ -467,7 +489,7 @@ function formatMedida(val) {
 
 // ===== APP STATE =====
 const App = {
-  data: { recipes: [], stock: [], orders: [], currentLines: [], brands: [], plateTypes: [] },
+  data: { recipes: [], stock: [], orders: [], currentLines: [], brands: [], plateTypes: [], plateTypeMeasures: {} },
   editingBrand: null,
   expandedBrands: {},
 
@@ -494,6 +516,7 @@ const App = {
         this.data.currentLines = parsed.currentLines || [];
         this.data.brands = parsed.brands && parsed.brands.length ? parsed.brands : JSON.parse(JSON.stringify(DEFAULT_BRANDS));
         this.data.plateTypes = parsed.plateTypes?.length ? parsed.plateTypes : [...DEFAULT_PLATE_TYPES];
+        this.data.plateTypeMeasures = parsed.plateTypeMeasures || {};
 
         // Migrate old brand format ({name, sub}) to new ({name, parent})
         if (this.data.brands.length && this.data.brands[0].sub !== undefined) {
@@ -537,6 +560,7 @@ const App = {
         this.data.currentLines = [];
         this.data.brands = JSON.parse(JSON.stringify(DEFAULT_BRANDS));
         this.data.plateTypes = [...DEFAULT_PLATE_TYPES];
+        this.data.plateTypeMeasures = {};
       }
       this.persist();
     } catch (e) {
@@ -558,7 +582,8 @@ const App = {
         orders: this.data.orders,
         currentLines: this.data.currentLines,
         brands: this.data.brands,
-        plateTypes: this.data.plateTypes
+        plateTypes: this.data.plateTypes,
+        plateTypeMeasures: this.data.plateTypeMeasures
       }));
     } catch (e) { console.error('Error saving data:', e); }
   },
@@ -1349,16 +1374,38 @@ const App = {
   // ===== RENDER: PLATE TYPES =====
   renderPlateTypes(container) {
     const types = this.data.plateTypes;
+    const expanded = this._expandedPt || {};
+
     const listHtml = types.length === 0
       ? '<div class="empty-state"><div class="icon">📋</div><p>No hay tipos de placa</p></div>'
-      : types.map((t, idx) =>
-        `<div class="setting-item" style="${plateBorderStyle(t)}">
-          <div class="si-header">
-            <span class="si-name">${t}</span>
-            <button class="btn-icon" data-action="delete-plate-type" data-pt="${idx}" style="color:var(--danger);background:none;border:none;font-size:16px;cursor:pointer;min-width:36px;min-height:36px">🗑</button>
-          </div>
-        </div>`
-      ).join('');
+      : types.map((t, idx) => {
+          const isOpen = expanded[idx] === true;
+          const measures = (this.data.plateTypeMeasures[t] || []);
+          const measuresHtml = measures.length
+            ? measures.map((m, mi) =>
+                `<div class="pt-measure-row">
+                  <span>${m}</span>
+                  <button class="btn-icon" data-action="delete-pt-measure" data-pt="${idx}" data-mi="${mi}" style="color:var(--danger);background:none;border:none;font-size:14px;cursor:pointer;min-width:32px;min-height:32px">✕</button>
+                </div>`
+              ).join('')
+            : '<div style="font-size:12px;color:var(--text-muted);padding:4px 0">Sin medidas</div>';
+
+          return `<div class="setting-item pt-card" data-action="toggle-pt" data-pt="${idx}" style="${plateBorderStyle(t)}">
+            <div class="pt-card-header">
+              <span style="font-size:12px;color:var(--text-muted);transition:transform 0.15s;display:inline-block;transform:${isOpen ? 'rotate(90deg)' : 'none'}">▶</span>
+              <span class="si-name">${t}</span>
+              <span style="font-size:12px;color:var(--text-muted)">${measures.length}</span>
+              <button class="btn-icon" data-action="delete-plate-type" data-pt="${idx}" style="color:var(--danger);background:none;border:none;font-size:16px;cursor:pointer;min-width:36px;min-height:36px">🗑</button>
+            </div>
+            ${isOpen ? `<div class="pt-expanded">
+              ${measuresHtml}
+              <div class="pt-add-row">
+                <input type="text" class="form-control" data-new-pt-measure="${idx}" style="flex:1;min-height:36px;padding:6px 8px;font-size:13px" placeholder="Ej: 80x190x15">
+                <button class="btn btn-sm btn-primary" style="width:auto;min-height:36px;padding:4px 10px;font-size:13px" data-action="add-pt-measure" data-pt="${idx}">+</button>
+              </div>
+            </div>` : ''}
+          </div>`;
+        }).join('');
 
     container.innerHTML = `
       <div style="margin-bottom:12px;font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px">
@@ -1378,6 +1425,45 @@ const App = {
   },
 
   attachPlateTypes() {
+    this._expandedPt = this._expandedPt || {};
+
+    document.querySelectorAll('[data-action="toggle-pt"]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        if (e.target.closest('[data-action="delete-plate-type"]')) return;
+        const idx = parseInt(el.dataset.pt, 10);
+        this._expandedPt[idx] = this._expandedPt[idx] ? false : true;
+        this.show('plate-types');
+      });
+    });
+
+    document.querySelectorAll('[data-action="add-pt-measure"]').forEach(el => {
+      el.addEventListener('click', () => {
+        const idx = parseInt(el.dataset.pt, 10);
+        const tipo = this.data.plateTypes[idx];
+        const input = document.querySelector(`[data-new-pt-measure="${idx}"]`);
+        const val = input?.value?.trim();
+        if (!val) { this.toast('Ingresá una medida'); return; }
+        if (!this.data.plateTypeMeasures[tipo]) this.data.plateTypeMeasures[tipo] = [];
+        this.data.plateTypeMeasures[tipo].push(val);
+        this.persist();
+        this.show('plate-types');
+        this.toast('Medida agregada');
+      });
+    });
+
+    document.querySelectorAll('[data-action="delete-pt-measure"]').forEach(el => {
+      el.addEventListener('click', () => {
+        const idx = parseInt(el.dataset.pt, 10);
+        const mi = parseInt(el.dataset.mi, 10);
+        const tipo = this.data.plateTypes[idx];
+        if (!this.data.plateTypeMeasures[tipo]) return;
+        this.data.plateTypeMeasures[tipo].splice(mi, 1);
+        this.persist();
+        this.show('plate-types');
+        this.toast('Medida eliminada');
+      });
+    });
+
     document.querySelectorAll('[data-action="delete-plate-type"]').forEach(el => {
       el.addEventListener('click', () => {
         const idx = parseInt(el.dataset.pt, 10);
