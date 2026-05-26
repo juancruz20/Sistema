@@ -407,15 +407,14 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 /* Mattress viewer */
 .mattress-wrap {
   margin-top: 12px;
-  padding: 12px;
+  padding: 14px 16px;
   background: var(--bg);
-  border-radius: 8px;
+  border-radius: 14px;
   border: 1px solid var(--border);
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   transition: background 0.15s;
-  position: relative;
 }
 .mattress-wrap:active { background: #F0F2F5; }
 .mattress-label {
@@ -423,42 +422,47 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   font-weight: 600;
   color: var(--text-muted);
   text-align: center;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   letter-spacing: 0.3px;
 }
 .mattress-stack {
   display: flex;
   flex-direction: column;
-  transition: gap 0.4s ease;
-  gap: 2px;
+  align-items: stretch;
 }
-.mattress-stack.exploded { gap: 10px; }
 .mattress-layer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 12px;
-  border-radius: 6px;
+  border-radius: 12px;
+  padding: 8px 14px;
   color: #fff;
   font-size: 12px;
   font-weight: 600;
-  min-height: 32px;
-  transition: margin 0.4s ease, box-shadow 0.4s ease;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), margin 0.5s ease, box-shadow 0.4s ease;
+  margin-bottom: 3px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06), inset 0 1px 1px rgba(255,255,255,0.35);
+  position: relative;
 }
+.mattress-layer:last-child { margin-bottom: 0; }
 .mattress-stack.exploded .mattress-layer {
-  margin: 0 4px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  margin-bottom: 10px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.1), inset 0 1px 1px rgba(255,255,255,0.35);
 }
-.mattress-layer .ml-name { font-size: 12px; }
-.mattress-layer .ml-measure { font-size: 11px; opacity: 0.85; }
+.mattress-stack.exploded .mattress-layer:last-child { margin-bottom: 0; }
+.mattress-layer .ml-name { font-size: 12px; opacity: 0; transition: opacity 0.3s ease 0.2s; }
+.mattress-layer .ml-measure { font-size: 11px; opacity: 0.85; opacity: 0; transition: opacity 0.3s ease 0.25s; }
+.mattress-stack.exploded .mattress-layer .ml-name,
+.mattress-stack.exploded .mattress-layer .ml-measure { opacity: 1; }
 .mattress-tap {
   text-align: center;
-  margin-top: 6px;
-  font-size: 16px;
+  margin-top: 8px;
+  font-size: 14px;
   color: var(--text-muted);
+  transition: opacity 0.3s ease;
 }
-.mattress-tap span { display: inline-block; transition: transform 0.3s ease; }
-.mattress-wrap.exploded .mattress-tap span { transform: rotate(180deg); }
+.mattress-wrap.exploded .mattress-tap { opacity: 0.4; }
 
 /* Scroll utilities */
 .flex-1 { flex: 1; }
@@ -570,9 +574,9 @@ function renderMattressViewer(plates, idx) {
     </div>`;
   }).join('');
   return `<div class="mattress-wrap" data-recipe-idx="${idx}">
-    <div class="mattress-label">🛏️ Vista del colchón — tocar para separar</div>
+    <div class="mattress-label">🛏️ Tocar para separar</div>
     <div class="mattress-stack" data-ms="${idx}">${layers}</div>
-    <div class="mattress-tap"><span>👆</span></div>
+    <div class="mattress-tap">👆</div>
   </div>`;
 }
 
