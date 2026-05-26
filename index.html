@@ -346,6 +346,38 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 }
 #toast.show { opacity: 1; }
 
+/* Plate measure line */
+.plate-measure {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+}
+.plate-measure-line {
+  display: inline-block;
+  width: 16px;
+  height: 1px;
+  background: var(--divider);
+  position: relative;
+}
+.plate-measure-line::before,
+.plate-measure-line::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  width: 1px;
+  height: 7px;
+  background: var(--divider);
+}
+.plate-measure-line::before { left: 0; }
+.plate-measure-line::after { right: 0; }
+.plate-measure-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 /* Scroll utilities */
 .flex-1 { flex: 1; }
 .text-center { text-align: center; }
@@ -388,49 +420,7 @@ const DEFAULT_RECIPES = [
 ];
 
 function generateDefaultStock() {
-  const stock = [];
-  let id = 1;
-  const widths = [80, 90, 100, 140, 160, 180, 200];
-
-  const known = {
-    'D28|80x190x15': 16,
-    'D28|90x190x23': 10,
-    'D28|100x190x17': 60,
-    'Soft|90x190x5': 10
-  };
-
-  const types = [
-    { tipo: 'D28', heights: [3, 5, 6, 15, 17, 19, 23] },
-    { tipo: 'D35', heights: [4, 17] },
-    { tipo: 'Soft', heights: [1.8, 3.5, 4.5] }
-  ];
-
-  for (const t of types) {
-    for (const w of widths) {
-      const length = w <= 140 ? 190 : 200;
-      for (const h of t.heights) {
-        const medida = `${w}x${length}x${h}`;
-        const key = `${t.tipo}|${medida}`;
-        stock.push({
-          id: 's' + (id++),
-          tipo: t.tipo,
-          medida: medida,
-          cantidad: known[key] || 0
-        });
-      }
-    }
-  }
-
-  // Add orphan known items that don't match generated combos (e.g. soft 90x190x5)
-  const generated = new Set(stock.map(s => `${s.tipo}|${s.medida}`));
-  for (const [key, qty] of Object.entries(known)) {
-    if (!generated.has(key)) {
-      const [tipo, medida] = key.split('|');
-      stock.push({ id: 's' + (id++), tipo, medida, cantidad: qty });
-    }
-  }
-
-  return stock;
+  return [];
 }
 
 const DEFAULT_STOCK = generateDefaultStock();
@@ -447,7 +437,7 @@ const DEFAULT_BRANDS = [
 
 const DEFAULT_PLATE_TYPES = ['D28', 'D35', 'Soft', 'D40 visco', 'Coolflow'];
 
-const ALTURAS = [3, 5, 6, 15, 17, 19, 23];
+const ALTURAS = [1.8, 3.5, 4.5, 6, 15, 17, 19, 23];
 const ALTURA_OPTS_HTML = ALTURAS.map(a => `<option value="${a}">${a} cm</option>`).join('');
 
 const PLATE_BORDER_COLORS = {
@@ -461,6 +451,14 @@ function plateBorderStyle(tipo) {
   const color = PLATE_BORDER_COLORS[tipo];
   if (!color) return 'border:2px solid #CBD5E0;border-radius:8px;padding:8px;margin-bottom:6px';
   return `border:2px solid ${color};border-radius:8px;padding:8px;margin-bottom:6px`;
+}
+
+function formatMedida(val) {
+  if (!val && val !== 0) return '';
+  const num = parseFloat(val);
+  if (isNaN(num)) return val;
+  if (Number.isInteger(num)) return `${num}cm`;
+  return `${String(num).replace('.', ',')} cm`;
 }
 
 // ===== APP STATE =====
@@ -1104,12 +1102,16 @@ const App = {
         if (hasChildren) {
           const expanded = this.expandedBrands?.[b.id] === true;
           row = `<div class="plate-row" style="padding-left:${indent}px;cursor:pointer;user-select:none;font-weight:600" data-action="toggle-brand-group" data-b="${b.id}">
-            <span style="flex:1">${expanded ? '▼' : '▶'} ${b.name}${b.medida ? ` <span style="font-weight:400;color:var(--text-muted);font-size:12px">${b.medida} cm</span>` : ''}</span>
+            <span style="flex:1">${expanded ? '▼' : '▶'} ${b.name}${b.medida ? ` <span style="display:inline-block;background:var(--border);border-radius:999px;padding:1px 10px;font-size:12px;font-weight:600;vertical-align:middle">${b.medida} cm</span>` : ''}</span>
           </div>`;
           if (expanded) {
             row += renderBrandChildren(b.id, depth + 1);
-            row += `<div class="plate-row" style="padding-left:${indent + 20}px;gap:6px">
+            row += `<div class="plate-row" style="padding-left:${indent + 20}px;gap:6px;flex-wrap:wrap">
               <input type="text" class="form-control brand-new-child" data-parent="${b.id}" style="flex:1;min-height:36px;padding:6px 8px;font-size:13px" placeholder="Nueva sub-submarca...">
+              <select class="form-control brand-new-medida" data-parent="${b.id}" style="flex:0 1 100px;min-height:36px;padding:6px 8px;font-size:13px">
+                <option value="">— alto —</option>
+                ${ALTURAS.map(a => `<option value="${a}">${a} cm</option>`).join('')}
+              </select>
               <button class="btn btn-sm btn-primary" style="width:auto;min-height:36px;padding:4px 10px;font-size:13px" data-action="add-child-brand" data-parent="${b.id}">+</button>
             </div>`;
           }
@@ -1117,7 +1119,7 @@ const App = {
           const hasPlus = 'plus' in b;
           const activo = b.plus !== false;
           row = `<div class="plate-row" style="padding-left:${indent}px">
-            <span style="flex:1">${b.name}${b.medida ? ` <span style="color:var(--text-muted);font-size:12px">${b.medida} cm</span>` : ''}</span>
+            <span style="flex:1">${b.name}${b.medida ? ` <span style="display:inline-block;background:var(--border);border-radius:999px;padding:1px 10px;font-size:12px;font-weight:600;vertical-align:middle">${b.medida} cm</span>` : ''}</span>
             ${hasPlus ? `<button class="btn-icon" data-action="toggle-plus" data-b="${b.id}" style="background:none;border:1px solid ${activo ? 'var(--success)' : '#ccc'};border-radius:14px;font-size:11px;font-weight:600;cursor:pointer;min-width:48px;min-height:28px;padding:2px 10px;color:${activo ? '#fff' : '#999'};background:${activo ? 'var(--success)' : 'transparent'}">${activo ? 'Plus' : 'plus'}</button>` : ''}
             <button class="btn-icon" data-action="edit-brand" data-b="${b.id}" style="color:var(--link);background:none;border:none;font-size:16px;cursor:pointer;min-width:36px;min-height:36px">✏️</button>
             <button class="btn-icon" data-action="remove-brand" data-b="${b.id}" style="color:var(--danger);background:none;border:none;font-size:16px;cursor:pointer;min-width:36px;min-height:36px">🗑</button>
@@ -1136,8 +1138,12 @@ const App = {
       </div>`;
       if (expanded) {
         html += renderBrandChildren(root.id, 1);
-        html += `<div class="plate-row" style="padding-left:16px;gap:6px">
+        html += `<div class="plate-row" style="padding-left:16px;gap:6px;flex-wrap:wrap">
           <input type="text" class="form-control brand-new-child" data-parent="${root.id}" style="flex:1;min-height:36px;padding:6px 8px;font-size:13px" placeholder="Nueva submarca...">
+          <select class="form-control brand-new-medida" data-parent="${root.id}" style="flex:0 1 100px;min-height:36px;padding:6px 8px;font-size:13px">
+            <option value="">— alto —</option>
+            ${ALTURAS.map(a => `<option value="${a}">${a} cm</option>`).join('')}
+          </select>
           <button class="btn btn-sm btn-primary" style="width:auto;min-height:36px;padding:4px 10px;font-size:13px" data-action="add-child-brand" data-parent="${root.id}">+</button>
         </div>`;
       }
@@ -1163,7 +1169,9 @@ const App = {
       : recipes.map((r, idx) => {
           const platesHtml = r.plates.map((p, pi) =>
             `<div class="plate-row">
-              <span><strong>${p.tipo}</strong> <span style="color:var(--text-muted);font-weight:400">${p.medida}</span></span>
+              <span><strong>${p.tipo}</strong> <span style="color:var(--text-muted);font-weight:400">${p.medida}</span>
+                ${p.medida ? `<span class="plate-measure"><span class="plate-measure-line"></span><span class="plate-measure-text">${formatMedida(p.medida)}</span></span>` : ''}
+              </span>
               <button class="btn-icon" data-action="remove-plate" data-r="${idx}" data-p="${pi}" style="color:var(--danger);background:none;border:none;font-size:16px;cursor:pointer;min-width:36px;min-height:36px">✕</button>
             </div>`
           ).join('');
@@ -1492,12 +1500,14 @@ const App = {
       el.addEventListener('click', () => {
         const parent = el.dataset.parent;
         const input = document.querySelector(`.brand-new-child[data-parent="${parent}"]`);
+        const medidaSelect = document.querySelector(`.brand-new-medida[data-parent="${parent}"]`);
         const name = input?.value?.trim();
+        const medida = medidaSelect?.value || '';
         if (!name) { this.toast('Ingresá un nombre'); return; }
         if (this.data.brands.some(b => b.name === name && b.parent === parent)) {
           this.toast('Ya existe'); return;
         }
-        this.data.brands.push({ id: this.uid(), name, parent });
+        this.data.brands.push({ id: this.uid(), name, parent, medida: medida ? parseFloat(medida) : undefined });
         this.expandedBrands[parent] = true;
         this.persist();
         this.show('settings');
