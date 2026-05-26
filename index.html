@@ -1283,7 +1283,10 @@ const App = {
         <div class="card-title">➕ Agregar stock</div>
         <div class="form-group">
           <label>Tipo de espuma</label>
-          <input type="text" id="newStockTipo" class="form-control" placeholder="Ej: D28, D35, Soft...">
+          <select id="newStockTipo" class="form-control">
+            <option value="">Seleccionar...</option>
+            ${this.data.plateTypes.filter(t => t !== 'Cajón taco gris').map(t => `<option value="${t}">${t}</option>`).join('')}
+          </select>
         </div>
         <div class="form-group">
           <label>Medida</label>
