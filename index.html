@@ -675,8 +675,27 @@ const App = {
         plateTypeMeasures: this.data.plateTypeMeasures
       });
       localStorage.setItem('sistema_data', data);
-      fetch('api.php', { method: 'POST', body: data }).catch(() => {});
+      this._sendToServer(data);
     } catch (e) { console.error('Error saving data:', e); }
+  },
+
+  _sendToServer(data) {
+    fetch('api.php', { method: 'POST', body: data }).catch(() => {});
+  },
+
+  syncToServer() {
+    try {
+      const data = JSON.stringify({
+        recipes: this.data.recipes,
+        stock: this.data.stock,
+        orders: this.data.orders,
+        currentLines: this.data.currentLines,
+        brands: this.data.brands,
+        plateTypes: this.data.plateTypes,
+        plateTypeMeasures: this.data.plateTypeMeasures
+      });
+      this._sendToServer(data);
+    } catch (e) {}
   },
 
   syncFromServer() {
@@ -1893,7 +1912,8 @@ App.data.currentLines = App.data.currentLines.filter(line => {
   return App.data.recipes.some(r => r.id === line.recipeId);
 });
 App.show('home');
-// Sync data from server (phone -> PC)
+// Sync data: push local to server, then pull server changes
+App.syncToServer();
 App.syncFromServer();
 </script>
 </body>
