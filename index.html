@@ -351,14 +351,17 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-left: 4px;
+  margin-left: 6px;
+  flex: none !important;
+  vertical-align: middle;
 }
 .plate-measure-line {
   display: inline-block;
-  width: 16px;
+  width: 24px;
   height: 1px;
   background: var(--divider);
   position: relative;
+  flex: none !important;
 }
 .plate-measure-line::before,
 .plate-measure-line::after {
@@ -376,6 +379,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   font-weight: 600;
   color: var(--text-muted);
   white-space: nowrap;
+  flex: none !important;
 }
 
 /* Scroll utilities */
