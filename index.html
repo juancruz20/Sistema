@@ -1430,11 +1430,12 @@ const App = {
 
     document.querySelectorAll('[data-action="toggle-pt"]').forEach(el => {
       el.addEventListener('click', (e) => {
-        if (e.target.closest('[data-action="delete-plate-type"]')) return;
+        if (e.target.closest('[data-action="delete-plate-type"], [data-pt-measure-input], [data-action="save-pt-measure"], [data-action="delete-pt-measure"], [data-action="add-pt-measure"], [data-new-pt-measure]')) return;
         const idx = parseInt(el.dataset.pt, 10);
         this._expandedPt[idx] = this._expandedPt[idx] ? false : true;
         this.show('plate-types');
       });
+    });
     });
 
     document.querySelectorAll('[data-action="add-pt-measure"]').forEach(el => {
@@ -1452,6 +1453,16 @@ const App = {
       });
     });
 
+    document.querySelectorAll('[data-new-pt-measure]').forEach(el => {
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const btn = document.querySelector(`[data-action="add-pt-measure"][data-pt="${el.dataset.newPtMeasure}"]`);
+          btn?.click();
+        }
+      });
+    });
+
     document.querySelectorAll('[data-action="save-pt-measure"]').forEach(el => {
       el.addEventListener('click', () => {
         const idx = parseInt(el.dataset.pt, 10);
@@ -1465,6 +1476,26 @@ const App = {
         this.persist();
         this.show('plate-types');
         this.toast('Medida actualizada');
+      });
+    });
+
+    document.querySelectorAll('[data-pt-measure-input]').forEach(el => {
+      el.addEventListener('blur', () => {
+        const idx = parseInt(el.dataset.ptMeasureInput, 10);
+        const mi = parseInt(el.dataset.mi, 10);
+        const tipo = this.data.plateTypes[idx];
+        const val = el.value?.trim();
+        if (!val || !this.data.plateTypeMeasures[tipo]) return;
+        if (this.data.plateTypeMeasures[tipo][mi] === val) return;
+        this.data.plateTypeMeasures[tipo][mi] = val;
+        this.persist();
+      });
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          el.blur();
+          this.toast('Medida actualizada');
+        }
       });
     });
 
