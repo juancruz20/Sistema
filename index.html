@@ -665,7 +665,7 @@ const App = {
 
   persist() {
     try {
-      localStorage.setItem('sistema_data', JSON.stringify({
+      const data = JSON.stringify({
         recipes: this.data.recipes,
         stock: this.data.stock,
         orders: this.data.orders,
@@ -673,8 +673,21 @@ const App = {
         brands: this.data.brands,
         plateTypes: this.data.plateTypes,
         plateTypeMeasures: this.data.plateTypeMeasures
-      }));
+      });
+      localStorage.setItem('sistema_data', data);
+      fetch('api.php', { method: 'POST', body: data }).catch(() => {});
     } catch (e) { console.error('Error saving data:', e); }
+  },
+
+  syncFromServer() {
+    fetch('api.php')
+      .then(r => r.json())
+      .then(serverData => {
+        if (!serverData) return;
+        localStorage.setItem('sistema_data', JSON.stringify(serverData));
+        location.reload();
+      })
+      .catch(() => {});
   },
 
   // ===== NAVIGATION =====
@@ -1880,6 +1893,8 @@ App.data.currentLines = App.data.currentLines.filter(line => {
   return App.data.recipes.some(r => r.id === line.recipeId);
 });
 App.show('home');
+// Sync data from server (phone -> PC)
+App.syncFromServer();
 </script>
 </body>
 </html>
