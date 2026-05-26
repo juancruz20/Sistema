@@ -1384,7 +1384,8 @@ const App = {
           const measuresHtml = measures.length
             ? measures.map((m, mi) =>
                 `<div class="pt-measure-row">
-                  <span>${m}</span>
+                  <input type="text" class="form-control" data-pt-measure-input="${idx}" data-mi="${mi}" value="${m}" style="flex:1;min-height:36px;padding:4px 8px;font-size:13px">
+                  <button class="btn-icon" data-action="save-pt-measure" data-pt="${idx}" data-mi="${mi}" style="color:var(--success);background:none;border:none;font-size:14px;cursor:pointer;min-width:32px;min-height:32px">💾</button>
                   <button class="btn-icon" data-action="delete-pt-measure" data-pt="${idx}" data-mi="${mi}" style="color:var(--danger);background:none;border:none;font-size:14px;cursor:pointer;min-width:32px;min-height:32px">✕</button>
                 </div>`
               ).join('')
@@ -1448,6 +1449,22 @@ const App = {
         this.persist();
         this.show('plate-types');
         this.toast('Medida agregada');
+      });
+    });
+
+    document.querySelectorAll('[data-action="save-pt-measure"]').forEach(el => {
+      el.addEventListener('click', () => {
+        const idx = parseInt(el.dataset.pt, 10);
+        const mi = parseInt(el.dataset.mi, 10);
+        const tipo = this.data.plateTypes[idx];
+        const input = document.querySelector(`[data-pt-measure-input="${idx}"][data-mi="${mi}"]`);
+        const val = input?.value?.trim();
+        if (!val) { this.toast('La medida no puede estar vacía'); return; }
+        if (!this.data.plateTypeMeasures[tipo]) return;
+        this.data.plateTypeMeasures[tipo][mi] = val;
+        this.persist();
+        this.show('plate-types');
+        this.toast('Medida actualizada');
       });
     });
 
